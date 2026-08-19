@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+    <!-- Maven 3.8.1+ blocks plain-HTTP repositories by default via a built-in
+         "maven-default-http-blocker" mirror. The official maven:3.9-eclipse-temurin-25
+         Docker image ships that default unmodified, so a container build otherwise fails
+         to resolve ms.rohde:hexagonal-arch-* from pom.xml's "internal-releases" repository.
+         internal-releases is anonymous-readable (verified: plain GET works without
+         credentials, from the host and from a plain container), so unblocking it here
+         needs no server credentials - only a matching mirror entry with blocked=false. -->
+    <mirrors>
+        <mirror>
+            <id>internal-releases-unblock</id>
+            <mirrorOf>internal-releases</mirrorOf>
+            <name>Unblock internal-releases (anonymous-readable, plain HTTP, internal network only)</name>
+            <url>http://maven.home/releases</url>
+            <blocked>false</blocked>
+        </mirror>
+    </mirrors>
+
+</settings>
