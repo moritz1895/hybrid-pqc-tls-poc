@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>ms.rohde</groupId>
+    <artifactId>hybrid-pqc-tls-poc</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>hybrid-pqc-tls-poc</name>
+    <description>PoC: TLS 1.3 handshake with hybrid post-quantum key exchange (X25519MLKEM768) on Java 25 via Bouncy Castle JSSE, with an extensibility seam for IBM's IBMJCECCA (ICSF/CCA) provider</description>
+
+    <properties>
+        <java.version>25</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <jspecify.version>1.0.1</jspecify.version>
+        <archunit.version>1.5.0</archunit.version>
+        <hexagonal-arch.version>1.0.0</hexagonal-arch.version>
+        <bouncycastle.version>1.85</bouncycastle.version>
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot core: only for the thin CommandLineRunner demo adapter (@DrivingAdapter) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Log4j2 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-log4j2</artifactId>
+        </dependency>
+
+        <!-- JSpecify -->
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>${jspecify.version}</version>
+        </dependency>
+
+        <!-- Jakarta Inject (JSR-330) -->
+        <dependency>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+        </dependency>
+
+        <!-- Hexagonal Architecture Annotations -->
+        <dependency>
+            <groupId>ms.rohde</groupId>
+            <artifactId>hexagonal-arch-annotations</artifactId>
+            <version>${hexagonal-arch.version}</version>
+        </dependency>
+
+        <!-- Hexagonal Architecture Spring Integration -->
+        <dependency>
+            <groupId>ms.rohde</groupId>
+            <artifactId>hexagonal-arch-spring</artifactId>
+            <version>${hexagonal-arch.version}</version>
+        </dependency>
+
+        <!-- Bouncy Castle TLS/JSSE engine: standalone TLS 1.3 stack + BouncyCastleJsseProvider
+             ("BCJSSE"), used because JEP 527 (native X25519MLKEM768 in SunJSSE) targets JDK 27,
+             not JDK 25 - see docs/features/hybrid-pqc-tls-demo.md. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bctls-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+
+        <!-- Bouncy Castle core JCE provider (BouncyCastleProvider), used both directly (EC key
+             generation is standard JDK API, but the JcaTlsCryptoProvider crypto backend for BCJSSE
+             needs an explicit JCA/JCE provider) and as the source for the software crypto backend. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+
+        <!-- Bouncy Castle X.509 certificate building (X509v3CertificateBuilder) for the ephemeral
+             self-signed demo server certificate. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>ms.rohde</groupId>
+            <artifactId>hexagonal-arch-archunit</artifactId>
+            <version>${hexagonal-arch.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- ms.rohde:hexagonal-arch-* is only published to this internal repository, never to
+         Maven Central; required for local builds and the containerized Docker build (see
+         Dockerfile). -->
+    <repositories>
+        <repository>
+            <id>internal-releases</id>
+            <url>http://maven.home/releases</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${java.version}</release>
+                    <compilerArgs>
+                        <!-- "-requires-automatic" excluded: Spring Boot jars deliberately ship no
+                             module-info.class (an Automatic-Module-Name instead of a real JPMS
+                             module); since the CLI demo adapter (@SpringBootApplication) requires
+                             spring.boot/spring.boot.autoconfigure/spring.context/spring.beans,
+                             "warns about using automatic modules in the 'requires' clauses" would
+                             otherwise be unavoidable - that's due to Spring's packaging, not our
+                             own code, hence excluded specifically instead of giving up on
+                             -Werror entirely. -->
+                        <arg>-Xlint:all,-requires-automatic</arg>
+                        <arg>-Werror</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- See the module-info.java comment: the Spring Boot jar always runs via
+                         "java -jar" on the classpath, never on the module path. Surefire should
+                         run test classes on the classpath too, consistently with that. -->
+                    <useModulePath>false</useModulePath>
+                    <argLine>
+                        -XX:+EnableDynamicAgentLoading
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        --add-opens java.base/java.util=ALL-UNNAMED
+                        --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

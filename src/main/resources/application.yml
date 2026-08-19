@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: hybrid-pqc-tls-poc
+  main:
+    banner-mode: "off"
+    web-application-type: none
