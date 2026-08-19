@@ -151,6 +151,13 @@ non-root user. **Docker only exercises the software backend** — the
 `ibm-cca` profile requires real z/OS/ICSF/CEX8P hardware, which is not
 something a container can provide.
 
+The build stage uses `settings.xml` (committed, no credentials) to unblock
+plain-HTTP access to the anonymous-readable `internal-releases` repository —
+Maven 3.8.1+ blocks plain-HTTP repositories by default, and the official
+Maven image ships that default unmodified. Verified end-to-end: `docker
+compose up --build` genuinely negotiates `X25519MLKEM768` on both sides
+inside the container and exits `0`.
+
 ### Reading the result
 
 The application logs the negotiated protocol, cipher suite, and named group
